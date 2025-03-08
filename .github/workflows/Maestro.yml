@@ -24,7 +24,7 @@ jobs:
 
       - name: Install Expo CLI
         run: npm install -g expo-cli
-        working-directory: my-app # Ensure commands run in the correct directory
+        working-directory: my-app
 
       - name: Install Dependencies
         run: npm install

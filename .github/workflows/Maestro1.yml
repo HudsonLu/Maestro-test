@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest # MacOS is required for Android Emulator
+    runs-on: macos-latest # macOS is required for running Android Emulators
 
     steps:
       - name: Checkout Code
@@ -19,11 +19,16 @@ jobs:
         with:
           node-version: 18
 
+      - name: Change to App Directory
+        run: cd my-app # Ensure we're inside the correct folder
+
       - name: Install Expo CLI
         run: npm install -g expo-cli
+        working-directory: my-app # Set working directory
 
       - name: Install Dependencies
         run: npm install
+        working-directory: my-app
 
       - name: Start Android Emulator (Pixel 7, API 35)
         uses: reactivecircus/android-emulator-runner@v2
@@ -39,27 +44,31 @@ jobs:
         run: adb devices -l
 
       - name: Build and Run Android App
-        run: npm run android & # Run in background to keep it running
+        run: npm run android &
+        working-directory: my-app # Ensure it's running inside the correct directory
 
       - name: Install Maestro
         run: |
           export MAESTRO_VERSION=1.39.9
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+        working-directory: my-app
 
       - name: Start Screen Recording
         run: adb shell screenrecord /sdcard/maestro-test-video.mp4 &
 
       - name: Run Maestro Tests
         run: maestro test maestro/test.yaml
+        working-directory: my-app
 
       - name: Stop Recording & Pull Video
         run: |
           adb shell killall -INT screenrecord || true
           adb pull /sdcard/maestro-test-video.mp4 maestro-test-video.mp4
+        working-directory: my-app
 
       - name: Upload Test Video
         uses: actions/upload-artifact@v4
         with:
           name: maestro-test-video
-          path: maestro-test-video.mp4
+          path: my-app/maestro-test-video.mp4
