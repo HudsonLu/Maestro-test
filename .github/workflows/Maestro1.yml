@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest # macOS is required for running Android Emulators
+    runs-on: macos-latest  # macOS is required for running Android Emulators
 
     steps:
       - name: Checkout Code
@@ -19,33 +19,36 @@ jobs:
         with:
           node-version: 18
 
-      - name: Change to App Directory
-        run: cd my-app # Ensure we're inside the correct folder
-
       - name: Install Expo CLI
         run: npm install -g expo-cli
-        working-directory: my-app # Set working directory
+        working-directory: my-app
 
       - name: Install Dependencies
         run: npm install
         working-directory: my-app
 
-      - name: Start Android Emulator (Pixel 7, API 35)
+      - name: Start Android Emulator (Pixel 3a, API 30)
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
-          target: google_apis
+          api-level: 30
+          target: google_apis_playstore
           arch: x86_64
-          profile: pixel_7
+          profile: pixel_3a
           disable-animations: true
-          script: echo "Android Emulator started!"
+          emulator-options: "-no-boot-anim -no-window -gpu swiftshader_indirect"
+          timeout-minutes: 15
+
+      - name: Wait for Emulator to Boot
+        run: |
+          adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 5; done'
+          echo "Emulator is fully booted!"
 
       - name: Print Emulator Details
         run: adb devices -l
 
       - name: Build and Run Android App
         run: npm run android &
-        working-directory: my-app # Ensure it's running inside the correct directory
+        working-directory: my-app
 
       - name: Install Maestro
         run: |
@@ -56,7 +59,7 @@ jobs:
 
       - name: Start Screen Recording
         run: adb shell screenrecord /sdcard/maestro-test-video.mp4 &
-
+      
       - name: Run Maestro Tests
         run: maestro test maestro/test.yaml
         working-directory: my-app
