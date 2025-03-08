@@ -1,0 +1,64 @@
+name: React Native Expo CI with Maestro (iOS Only)
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Expo CLI
+        run: npm install -g expo-cli
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Launch iOS Simulator
+        id: sim
+        uses: futureware-tech/simulator-action@v4
+
+      - name: Print Simulator Details
+        run: |
+          echo "Simulator UDID: ${{ steps.sim.outputs.udid }}"
+
+      - name: Install Expo App on iOS Simulator
+        run: npm run ios
+
+      - name: Install Maestro
+        run: |
+          export MAESTRO_VERSION=1.39.9
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Start Screen Recording
+        run: |
+          xcrun simctl io booted recordVideo maestro-test-video.mp4 &
+          echo "Recording started"
+
+      - name: Run Maestro Tests
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: 360000
+        run: maestro test maestro/test.yml
+
+      - name: Stop Screen Recording
+        run: |
+          killall simctl || true
+          echo "Recording stopped"
+
+      - name: Upload Test Video
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-test-video
+          path: maestro-test-video.mp4
