@@ -7,8 +7,15 @@ on:
     branches: ["*"]
 
 jobs:
-  build:
-    runs-on: macos-latest  # macOS is required for running Android Emulators
+  test-android:
+    name: Test on Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    env:
+      ANDROID_HOME: /home/runner/androidsdk
+      ANDROID_SDK_ROOT: /home/runner/androidsdk
+      ANDROID_OS_IMAGE: system-images;android-30;google_apis;x86_64
 
     steps:
       - name: Checkout Code
@@ -27,20 +34,29 @@ jobs:
         run: npm install
         working-directory: my-app
 
-      - name: Start Android Emulator (Pixel 3a, API 30)
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          target: google_apis_playstore
-          arch: x86_64
-          profile: pixel_3a
-          disable-animations: true
-          emulator-options: "-no-boot-anim -no-window -gpu swiftshader_indirect"
-          emulator-boot-timeout: 900  # 15-minute timeout
-          script: adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 5; done; echo "Emulator is fully booted!"'
+      - name: Set Up Android Command-line Tools
+        run: |
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          curl -fo sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9123335_latest.zip
+          unzip sdk-tools.zip -d "$ANDROID_HOME/cmdline-tools"
+          echo "$ANDROID_HOME/cmdline-tools/bin:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          yes | sdkmanager --licenses
+          yes | sdkmanager --install "platform-tools" "emulator" "platforms;android-30" "$ANDROID_OS_IMAGE"
 
-      - name: Print Emulator Details
-        run: adb devices -l
+      - name: Create and Start AVD
+        run: |
+          avdmanager create avd -n test_avd -k "$ANDROID_OS_IMAGE" --device "pixel_7"
+          echo "hw.lcd.width=1080" >> ~/.android/avd/test_avd.avd/config.ini
+          echo "hw.lcd.height=2340" >> ~/.android/avd/test_avd.avd/config.ini
+          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/test_avd.avd/config.ini
+          echo "disk.dataPartition.size=4G" >> ~/.android/avd/test_avd.avd/config.ini
+          echo "hw.ramSize=3072" >> ~/.android/avd/test_avd.avd/config.ini
+          emulator -avd test_avd -no-audio -no-window -gpu swiftshader_indirect -no-boot-anim -accel on &
+      
+      - name: Wait for Emulator to Start
+        run: |
+          adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 5; done; echo "Emulator booted!"'
+          adb devices
 
       - name: Build and Run Android App
         run: npm run android &
@@ -63,6 +79,7 @@ jobs:
       - name: Stop Recording & Pull Video
         run: |
           adb shell killall -INT screenrecord || true
+          sleep 5 # Prevents video corruption
           adb pull /sdcard/maestro-test-video.mp4 maestro-test-video.mp4
         working-directory: my-app
 
