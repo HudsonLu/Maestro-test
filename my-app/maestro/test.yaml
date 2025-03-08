@@ -1,0 +1,18 @@
+appId: com.example.myapp # Replace with your actual app ID
+---
+- launchApp
+
+# Ensure we start on the Home tab
+- assertVisible: "Home"
+
+# Navigate to the Explore tab
+- tapOn: "Explore"
+
+# Verify the Explore tab is active
+- assertVisible: "Explore"
+
+# Navigate back to the Home tab
+- tapOn: "Home"
+
+# Ensure we are back on Home
+- assertVisible: "Home"
