@@ -19,11 +19,16 @@ jobs:
         with:
           node-version: 18
 
+      - name: Change to App Directory
+        run: cd my-app
+
       - name: Install Expo CLI
         run: npm install -g expo-cli
+        working-directory: my-app # Ensure commands run in the correct directory
 
       - name: Install Dependencies
         run: npm install
+        working-directory: my-app
 
       - name: Launch iOS Simulator
         id: sim
@@ -35,12 +40,14 @@ jobs:
 
       - name: Install Expo App on iOS Simulator
         run: npm run ios
+        working-directory: my-app
 
       - name: Install Maestro
         run: |
           export MAESTRO_VERSION=1.39.9
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+        working-directory: my-app
 
       - name: Start Screen Recording
         run: |
@@ -51,6 +58,7 @@ jobs:
         env:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: 360000
         run: maestro test maestro/test.yml
+        working-directory: my-app
 
       - name: Stop Screen Recording
         run: |
@@ -61,4 +69,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: maestro-test-video
-          path: maestro-test-video.mp4
+          path: my-app/maestro-test-video.mp4
